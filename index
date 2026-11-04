@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gremio Hiperbólico | Afiliación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Space+Grotesk:wght@500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Efectos visuales hiperbólicos para el carnet */
+        .glass-card {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.4) 0%, rgba(219, 39, 119, 0.4) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .blob {
+            position: absolute;
+            filter: blur(40px);
+            z-index: 0;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden flex items-center justify-center p-4">
+    
+    <!-- Decoración de fondo -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="blob bg-indigo-600 w-96 h-96 rounded-full -top-10 -left-20"></div>
+        <div class="blob bg-pink-600 w-80 h-80 rounded-full bottom-10 right-10"></div>
+        <div class="blob bg-purple-800 w-72 h-72 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-30"></div>
+    </div>
+
+    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center z-10">
+        
+        <!-- Formulario -->
+        <section class="bg-slate-900/80 backdrop-blur-md p-8 rounded-3xl border border-slate-700 shadow-xl">
+            <h1 class="text-3xl font-display font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
+                Gremio Hiperbólico
+            </h1>
+            <p class="text-slate-400 mb-6 text-sm">Únete a la matriz. Ingresa tus datos para generar tu carnet oficial. Solo se permite una afiliación por DNI.</p>
+            
+            <form id="afiliacion-form" class="space-y-5">
+                <div>
+                    <label for="dni" class="block text-sm font-medium text-slate-300 mb-1">DNI (Sin puntos)</label>
+                    <input type="number" id="dni" required placeholder="Ej: 12345678" 
+                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                </div>
+                
+                <div>
+                    <label for="cumpleanos" class="block text-sm font-medium text-slate-300 mb-1">Fecha de Cumpleaños</label>
+                    <input type="date" id="cumpleanos" required 
+                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all [color-scheme:dark]">
+                </div>
+
+                <div>
+                    <label for="hiperfijacion" class="block text-sm font-medium text-slate-300 mb-1">Tu Hiperfijación Actual</label>
+                    <input type="text" id="hiperfijacion" required placeholder="Ej: Coleccionar rocas, Programación, Gatos..." 
+                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                </div>
+
+                <!-- Mensajes de estado -->
+                <div id="status-message" class="hidden rounded-xl p-3 text-sm font-medium text-center"></div>
+
+                <button type="submit" id="submit-btn" 
+                        class="w-full bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transform transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Generar Carnet
+                </button>
+            </form>
+        </section>
+
+        <!-- Preview del Carnet -->
+        <section class="flex flex-col items-center justify-center p-4">
+            
+            <div id="carnet-placeholder" class="w-full max-w-sm aspect-[1.586/1] border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-500 bg-slate-800/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                </svg>
+                <p>Tu carnet aparecerá aquí</p>
+            </div>
+
+            <!-- Carnet Real (Oculto al inicio) -->
+            <div id="carnet-container" class="hidden relative w-full max-w-sm aspect-[1.586/1] glass-card rounded-2xl overflow-hidden group hover:scale-105 transition-transform duration-500">
+                <!-- Capas decorativas internas -->
+                <div class="absolute -top-16 -right-16 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-pink-500/30 rounded-full blur-2xl"></div>
+                
+                <!-- Patrón de malla (grid) sutil -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-50"></div>
+
+                <div class="relative h-full w-full p-6 flex flex-col justify-between z-10">
+                    <!-- Cabecera del carnet -->
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="font-display font-bold text-lg leading-tight uppercase tracking-widest text-white drop-shadow-md">
+                                Gremio<br><span class="text-pink-300">Hiperbólico</span>
+                            </h2>
+                        </div>
+                        <div class="bg-black/40 px-3 py-1.5 rounded-lg border border-white/10 backdrop-blur-sm">
+                            <p class="text-[0.65rem] text-slate-300 uppercase font-semibold tracking-wider mb-0.5 text-center">Afiliado Nº</p>
+                            <p id="display-nro" class="text-sm font-mono font-bold text-white tracking-widest"></p>
+                        </div>
+                    </div>
+
+                    <!-- Datos del usuario -->
+                    <div class="mt-auto space-y-3 bg-black/20 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">DNI</p>
+                                <p id="display-dni" class="font-mono font-medium text-lg leading-none"></p>
+                            </div>
+                            <div>
+                                <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">Nacimiento</p>
+                                <p id="display-dob" class="font-medium text-sm leading-none mt-1"></p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">Hiperfijación Primaria</p>
+                            <p id="display-hiper" class="font-semibold text-base leading-tight truncate text-indigo-100"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="btn-nuevo" class="hidden mt-6 text-sm text-indigo-400 hover:text-pink-400 font-medium transition-colors">
+                ← Registrar otra afiliación
+            </button>
+        </section>
+    </main>
+
+    <!-- Firebase e Inicialización -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Obtener variables de entorno o usar fallbacks seguros
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gremio-hiperbolico-dev';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Mock config para evitar errores si no se provee, la app necesitará un backend real o in-memory si falla
+            projectId: "mock-project",
+        };
+
+        // Inicializar UI Elements
+        const form = document.getElementById('afiliacion-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const statusMsg = document.getElementById('status-message');
+        const carnetPlaceholder = document.getElementById('carnet-placeholder');
+        const carnetContainer = document.getElementById('carnet-container');
+        const btnNuevo = document.getElementById('btn-nuevo');
+
+        // Función para mostrar mensajes
+        function showMessage(msg, type = 'error') {
+            statusMsg.textContent = msg;
+            statusMsg.className = `rounded-xl p-3 text-sm font-medium text-center ${
+                type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' : 
+                type === 'success' ? 'bg-green-900/50 text-green-200 border border-green-800' : 
+                'bg-blue-900/50 text-blue-200 border border-blue-800'
+            }`;
+            statusMsg.classList.remove('hidden');
+        }
+
+        // Utilizar try-catch por si estamos en un entorno sin internet o falla Firebase
+        let db, auth;
+        let isFirebaseReady = false;
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            isFirebaseReady = true;
+        } catch (error) {
+            console.error("Error inicializando Firebase:", error);
+            showMessage("Modo sin conexión. Los datos no se guardarán permanentemente.", "error");
+        }
+
+        // Autenticación requerida por Firestore
+        async function ensureAuth() {
+            if (!isFirebaseReady) return false;
+            if (auth.currentUser) return true;
+            
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                return true;
+            } catch (error) {
+                console.error("Error de autenticación:", error);
+                return false;
+            }
+        }
+
+        // Formatear fecha para visualización (YYYY-MM-DD a DD/MM/YYYY)
+        function formatFecha(fechaStr) {
+            const [year, month, day] = fechaStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // Generar número de afiliado bonito (GH-XXXXXX)
+        function generarNumeroAfiliado() {
+            const randomNum = Math.floor(100000 + Math.random() * 900000);
+            return `GH-${randomNum}`;
+        }
+
+        // In-memory fallback si Firebase falla
+        const localDatabase = new Set(); 
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const dni = document.getElementById('dni').value.trim();
+            const cumpleanos = document.getElementById('cumpleanos').value;
+            const hiperfijacion = document.getElementById('hiperfijacion').value.trim();
+
+            if (!dni || !cumpleanos || !hiperfijacion) {
+                showMessage("Por favor, completa todos los campos.");
+                return;
+            }
+
+            // UI a estado de carga
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-pulse">Procesando en la matriz...</span>';
+            statusMsg.classList.add('hidden');
+
+            try {
+                let isUnique = true;
+                let nroAfiliado = generarNumeroAfiliado();
+
+                // Lógica principal: Verificar y Guardar en Firestore
+                if (isFirebaseReady) {
+                    const authSuccess = await ensureAuth();
+                    if (authSuccess) {
+                        // REGLA 1: Usamos la ruta estricta permitida para datos públicos
+                        // Usamos el DNI como ID del documento para garantizar unicidad sin queries complejos (REGLA 2)
+                        const afiliadoRef = doc(db, 'artifacts', appId, 'public', 'data', 'afiliados', dni);
+                        const afiliadoSnap = await getDoc(afiliadoRef);
+
+                        if (afiliadoSnap.exists()) {
+                            isUnique = false;
+                        } else {
+                            // Guardamos si no existe
+                            await setDoc(afiliadoRef, {
+                                dni: dni,
+                                nacimiento: cumpleanos,
+                                hiperfijacion: hiperfijacion,
+                                numeroAfiliado: nroAfiliado,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                    } else {
+                         throw new Error("No se pudo autenticar con la base de datos.");
+                    }
+                } else {
+                    // Fallback local para asegurar que la app funcione visualmente si no hay config
+                    if(localDatabase.has(dni)) {
+                        isUnique = false;
+                    } else {
+                        localDatabase.add(dni);
+                    }
+                }
+
+                if (!isUnique) {
+                    showMessage("Denegado: Este DNI ya está registrado en el Gremio.", "error");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Generar Carnet";
+                    return;
+                }
+
+                // Éxito - Mostrar Carnet
+                showMessage("¡Afiliación exitosa! Bienvenido al Gremio.", "success");
+                
+                // Actualizar UI del carnet
+                document.getElementById('display-nro').textContent = nroAfiliado;
+                document.getElementById('display-dni').textContent = dni;
+                document.getElementById('display-dob').textContent = formatFecha(cumpleanos);
+                document.getElementById('display-hiper').textContent = hiperfijacion;
+
+                // Animaciones de transición
+                form.classList.add('opacity-50', 'pointer-events-none');
+                carnetPlaceholder.classList.add('hidden');
+                carnetContainer.classList.remove('hidden');
+                
+                // Animación de aparición pop
+                carnetContainer.classList.add('animate-[bounce_1s_ease-in-out]');
+                
+                btnNuevo.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error procesando afiliación:", error);
+                showMessage("Hubo un error galáctico al procesar tu solicitud. Intenta de nuevo.");
+            } finally {
+                if(submitBtn.disabled && !form.classList.contains('opacity-50')) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Generar Carnet";
+                }
+            }
+        });
+
+        // Resetear para nueva afiliación
+        btnNuevo.addEventListener('click', () => {
+            form.reset();
+            form.classList.remove('opacity-50', 'pointer-events-none');
+            carnetPlaceholder.classList.remove('hidden');
+            carnetContainer.classList.add('hidden');
+            btnNuevo.classList.add('hidden');
+            statusMsg.classList.add('hidden');
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Generar Carnet";
+            
+            // Hacer scroll hacia el formulario en pantallas pequeñas
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+    </script>
+</body>
+</html>
