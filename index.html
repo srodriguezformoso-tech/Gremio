@@ -1,332 +1,615 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gremio Hiperbólico | Afiliación</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Space+Grotesk:wght@500;700&display=swap');
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { Shield, ShieldAlert, FileText, Lock, LogOut, ChevronRight, Fingerprint, Sparkles, AlertCircle, CheckCircle2, Download, Image as ImageIcon, Video, File, KeyRound } from 'lucide-react';
+
+export default function App() {
+  // --- State Management ---
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [user, setUser] = useState(null);
+  const [appId, setAppId] = useState('gremio-hiperbolico-default');
+  
+  const [currentView, setCurrentView] = useState('welcome'); // 'welcome', 'register', 'dashboard'
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Cargar html2canvas dinámicamente para la descarga del carnet
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
+  // --- Firebase Initialization ---
+  useEffect(() => {
+    try {
+      const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+      // Mock config check to allow UI to render even if environment variables are missing during dev/preview
+      const firebaseConfig = configStr.length > 5 ? JSON.parse(configStr) : { projectId: 'mock' };
+      const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'gremio-hiperbolico-default';
+      
+      setAppId(currentAppId);
+
+      // Only initialize if we have a real looking config or we want to risk errors
+      if (firebaseConfig.projectId && firebaseConfig.projectId !== 'mock') {
+        const app = initializeApp(firebaseConfig);
+        const fbAuth = getAuth(app);
+        const fbDb = getFirestore(app);
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-        }
+        setDb(fbDb);
+        setAuth(fbAuth);
 
-        .font-display {
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        /* Efectos visuales hiperbólicos para el carnet */
-        .glass-card {
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0.4) 0%, rgba(219, 39, 119, 0.4) 100%);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .blob {
-            position: absolute;
-            filter: blur(40px);
-            z-index: 0;
-            opacity: 0.6;
-        }
-    </style>
-</head>
-<body class="min-h-screen relative overflow-x-hidden flex items-center justify-center p-4">
-    
-    <!-- Decoración de fondo -->
-    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div class="blob bg-indigo-600 w-96 h-96 rounded-full -top-10 -left-20"></div>
-        <div class="blob bg-pink-600 w-80 h-80 rounded-full bottom-10 right-10"></div>
-        <div class="blob bg-purple-800 w-72 h-72 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-30"></div>
-    </div>
-
-    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center z-10">
-        
-        <!-- Formulario -->
-        <section class="bg-slate-900/80 backdrop-blur-md p-8 rounded-3xl border border-slate-700 shadow-xl">
-            <h1 class="text-3xl font-display font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
-                Gremio Hiperbólico
-            </h1>
-            <p class="text-slate-400 mb-6 text-sm">Únete a la matriz. Ingresa tus datos para generar tu carnet oficial. Solo se permite una afiliación por DNI.</p>
-            
-            <form id="afiliacion-form" class="space-y-5">
-                <div>
-                    <label for="dni" class="block text-sm font-medium text-slate-300 mb-1">DNI (Sin puntos)</label>
-                    <input type="number" id="dni" required placeholder="Ej: 12345678" 
-                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                </div>
-                
-                <div>
-                    <label for="cumpleanos" class="block text-sm font-medium text-slate-300 mb-1">Fecha de Cumpleaños</label>
-                    <input type="date" id="cumpleanos" required 
-                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all [color-scheme:dark]">
-                </div>
-
-                <div>
-                    <label for="hiperfijacion" class="block text-sm font-medium text-slate-300 mb-1">Tu Hiperfijación Actual</label>
-                    <input type="text" id="hiperfijacion" required placeholder="Ej: Coleccionar rocas, Programación, Gatos..." 
-                           class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                </div>
-
-                <!-- Mensajes de estado -->
-                <div id="status-message" class="hidden rounded-xl p-3 text-sm font-medium text-center"></div>
-
-                <button type="submit" id="submit-btn" 
-                        class="w-full bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transform transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Generar Carnet
-                </button>
-            </form>
-        </section>
-
-        <!-- Preview del Carnet -->
-        <section class="flex flex-col items-center justify-center p-4">
-            
-            <div id="carnet-placeholder" class="w-full max-w-sm aspect-[1.586/1] border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-500 bg-slate-800/30">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                </svg>
-                <p>Tu carnet aparecerá aquí</p>
-            </div>
-
-            <!-- Carnet Real (Oculto al inicio) -->
-            <div id="carnet-container" class="hidden relative w-full max-w-sm aspect-[1.586/1] glass-card rounded-2xl overflow-hidden group hover:scale-105 transition-transform duration-500">
-                <!-- Capas decorativas internas -->
-                <div class="absolute -top-16 -right-16 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
-                <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-pink-500/30 rounded-full blur-2xl"></div>
-                
-                <!-- Patrón de malla (grid) sutil -->
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-50"></div>
-
-                <div class="relative h-full w-full p-6 flex flex-col justify-between z-10">
-                    <!-- Cabecera del carnet -->
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h2 class="font-display font-bold text-lg leading-tight uppercase tracking-widest text-white drop-shadow-md">
-                                Gremio<br><span class="text-pink-300">Hiperbólico</span>
-                            </h2>
-                        </div>
-                        <div class="bg-black/40 px-3 py-1.5 rounded-lg border border-white/10 backdrop-blur-sm">
-                            <p class="text-[0.65rem] text-slate-300 uppercase font-semibold tracking-wider mb-0.5 text-center">Afiliado Nº</p>
-                            <p id="display-nro" class="text-sm font-mono font-bold text-white tracking-widest"></p>
-                        </div>
-                    </div>
-
-                    <!-- Datos del usuario -->
-                    <div class="mt-auto space-y-3 bg-black/20 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">DNI</p>
-                                <p id="display-dni" class="font-mono font-medium text-lg leading-none"></p>
-                            </div>
-                            <div>
-                                <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">Nacimiento</p>
-                                <p id="display-dob" class="font-medium text-sm leading-none mt-1"></p>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <p class="text-[0.65rem] text-pink-200 uppercase font-bold tracking-widest mb-0.5">Hiperfijación Primaria</p>
-                            <p id="display-hiper" class="font-semibold text-base leading-tight truncate text-indigo-100"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <button id="btn-nuevo" class="hidden mt-6 text-sm text-indigo-400 hover:text-pink-400 font-medium transition-colors">
-                ← Registrar otra afiliación
-            </button>
-        </section>
-    </main>
-
-    <!-- Firebase e Inicialización -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Obtener variables de entorno o usar fallbacks seguros
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gremio-hiperbolico-dev';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Mock config para evitar errores si no se provee, la app necesitará un backend real o in-memory si falla
-            projectId: "mock-project",
+        const initAuth = async () => {
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(fbAuth, __initial_auth_token);
+            } else {
+              await signInAnonymously(fbAuth);
+            }
+          } catch (e) {
+            console.error("Auth init error:", e);
+          }
         };
 
-        // Inicializar UI Elements
-        const form = document.getElementById('afiliacion-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const statusMsg = document.getElementById('status-message');
-        const carnetPlaceholder = document.getElementById('carnet-placeholder');
-        const carnetContainer = document.getElementById('carnet-container');
-        const btnNuevo = document.getElementById('btn-nuevo');
+        initAuth();
 
-        // Función para mostrar mensajes
-        function showMessage(msg, type = 'error') {
-            statusMsg.textContent = msg;
-            statusMsg.className = `rounded-xl p-3 text-sm font-medium text-center ${
-                type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' : 
-                type === 'success' ? 'bg-green-900/50 text-green-200 border border-green-800' : 
-                'bg-blue-900/50 text-blue-200 border border-blue-800'
-            }`;
-            statusMsg.classList.remove('hidden');
+        const unsubscribe = onAuthStateChanged(fbAuth, (u) => {
+          setUser(u);
+        });
+
+        return () => unsubscribe();
+      }
+    } catch (e) {
+      console.error("Firebase setup error:", e);
+    }
+  }, []);
+
+  // --- Handlers ---
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    const dni = e.target.loginDni.value.trim();
+    const password = e.target.loginPassword.value.trim();
+    if (!dni || !password) {
+      setErrorMsg('Ingresa DNI y contraseña.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      if (!db || !user) throw new Error("Conexión con la matriz no establecida.");
+
+      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'afiliados', dni);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        if (data.password === password) {
+          setUserData(data);
+          setCurrentView('dashboard');
+        } else {
+          setErrorMsg('Contraseña incorrecta.');
         }
+      } else {
+        setErrorMsg('DNI no encontrado en los registros del Gremio.');
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMsg('Error de conexión al verificar credenciales.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Utilizar try-catch por si estamos en un entorno sin internet o falla Firebase
-        let db, auth;
-        let isFirebaseReady = false;
+  const handleRegister = async (e, logoBase64) => {
+    e.preventDefault();
+    const form = e.target;
+    const dni = form.dni.value.trim();
+    const password = form.password.value.trim();
+    const nombre = form.nombre.value.trim();
+    const cumpleanos = form.cumpleanos.value;
+    const hiperfijacion = form.hiperfijacion.value.trim();
+    const isVip = form.tier.value === 'vip';
+    const vipCode = form.vipCode?.value.trim();
 
+    if (!dni || !password || !nombre || !cumpleanos || !hiperfijacion) {
+      setErrorMsg('Completa todos los campos obligatorios.');
+      return;
+    }
+
+    if (isVip && vipCode !== 'HIPERVIP') {
+      setErrorMsg('Código VIP inválido o no autorizado.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      if (!db || !user) throw new Error("Conexión con la matriz no establecida.");
+
+      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'afiliados', dni);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        setErrorMsg('Ya existe un carnet registrado con este DNI.');
+      } else {
+        const newUserData = {
+          dni,
+          password, // Nota: Para un entorno real, las contraseñas deberían encriptarse
+          nombre,
+          nacimiento: cumpleanos,
+          hiperfijacion,
+          logoUrl: logoBase64 || '', // Guardamos la imagen en Base64
+          tier: isVip ? 'VIP' : 'NORMAL',
+          afiliadoId: `GH-${Math.floor(100000 + Math.random() * 900000)}`,
+          fechaRegistro: new Date().toISOString()
+        };
+
+        await setDoc(userRef, newUserData);
+        setUserData(newUserData);
+        setCurrentView('dashboard');
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMsg('Hubo un error galáctico al crear el carnet.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setUserData(null);
+    setCurrentView('welcome');
+  };
+
+  // --- Views ---
+  const WelcomeView = () => (
+    <div className="max-w-md w-full mx-auto animate-in fade-in zoom-in duration-500">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+          <Shield size={120} />
+        </div>
+        
+        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 mb-2">
+          Terminal de Acceso
+        </h1>
+        <p className="text-slate-400 text-sm mb-8">Identifícate para ingresar al Gremio Hiperbólico o genera un nuevo carnet.</p>
+
+        <form onSubmit={handleLogin} className="space-y-4 relative z-10">
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Ingresar con DNI</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Fingerprint className="h-5 w-5 text-slate-500" />
+              </div>
+              <input 
+                type="number" 
+                name="loginDni"
+                required
+                placeholder="Número de DNI" 
+                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Contraseña</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <KeyRound className="h-5 w-5 text-slate-500" />
+              </div>
+              <input 
+                type="password" 
+                name="loginPassword"
+                required
+                placeholder="Tu contraseña secreta" 
+                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+          
+          {errorMsg && (
+            <div className="flex items-center space-x-2 text-red-400 text-sm bg-red-950/30 p-3 rounded-lg border border-red-900/50">
+              <AlertCircle size={16} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <button 
+            disabled={loading}
+            type="submit" 
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] disabled:opacity-50"
+          >
+            {loading ? 'Accediendo...' : 'Iniciar Sesión'}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-slate-800 text-center relative z-10">
+          <p className="text-slate-400 text-sm mb-4">¿Aún no eres miembro de la matriz?</p>
+          <button 
+            onClick={() => { setErrorMsg(''); setCurrentView('register'); }}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium py-3 rounded-xl transition-all border border-slate-700"
+          >
+            Generar Nuevo Carnet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const RegisterView = () => {
+    const [isVip, setIsVip] = useState(false);
+    const [logoBase64, setLogoBase64] = useState('');
+
+    const handleImageUpload = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        // Límite de tamaño sugerido (1MB) para no sobrecargar el documento de Firestore
+        if (file.size > 1024 * 1024) {
+          setErrorMsg('La imagen es demasiado grande. Máximo 1MB.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => setLogoBase64(reader.result);
+        reader.readAsDataURL(file);
+      }
+    };
+
+    return (
+      <div className="max-w-xl w-full mx-auto animate-in slide-in-from-bottom-8 duration-500">
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl">
+          
+          <button onClick={() => setCurrentView('welcome')} className="text-slate-400 hover:text-white mb-6 flex items-center text-sm transition-colors">
+            <ChevronRight className="rotate-180 w-4 h-4 mr-1" /> Volver
+          </button>
+
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+            <ShieldAlert className="w-6 h-6 mr-3 text-indigo-400" />
+            Registro de Afiliación
+          </h2>
+
+          <form onSubmit={(e) => handleRegister(e, logoBase64)} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre Completo</label>
+                <input type="text" name="nombre" required className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">DNI (Único)</label>
+                <input type="number" name="dni" required className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Contraseña</label>
+                <input type="password" name="password" required className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fecha de Nacimiento</label>
+                <input type="date" name="cumpleanos" required className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all [color-scheme:dark]" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Hiperfijación Actual</label>
+                <input type="text" name="hiperfijacion" required placeholder="Ej: Astrofísica, Gatos..." className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tu Logo / Foto (Opcional)</label>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-2.5 text-slate-400 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Nivel de Afiliación</label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col items-center justify-center transition-all ${!isVip ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 bg-slate-900/50 hover:border-slate-500'}`}>
+                  <input type="radio" name="tier" value="normal" checked={!isVip} onChange={() => setIsVip(false)} className="sr-only" />
+                  <Shield className={`w-8 h-8 mb-2 ${!isVip ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <span className="font-semibold text-sm">Gremio Normal</span>
+                </label>
+                
+                <label className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col items-center justify-center transition-all ${isVip ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-900/50 hover:border-slate-500'}`}>
+                  <input type="radio" name="tier" value="vip" checked={isVip} onChange={() => setIsVip(true)} className="sr-only" />
+                  <Sparkles className={`w-8 h-8 mb-2 ${isVip ? 'text-amber-400' : 'text-slate-500'}`} />
+                  <span className="font-semibold text-sm">Gremio VIP</span>
+                </label>
+              </div>
+            </div>
+
+            {isVip && (
+              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1 flex items-center">
+                  <Lock className="w-3 h-3 mr-1" /> Código Secreto de Acceso VIP
+                </label>
+                <input type="password" name="vipCode" placeholder="Ingresa el código" className="w-full bg-slate-950/50 border border-amber-500/50 rounded-xl p-3 text-amber-100 placeholder-amber-900/50 focus:ring-2 focus:ring-amber-500 outline-none transition-all" />
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="flex items-center space-x-2 text-red-400 text-sm bg-red-950/30 p-3 rounded-lg border border-red-900/50">
+                <AlertCircle size={16} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <button 
+              disabled={loading}
+              type="submit" 
+              className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg disabled:opacity-50 mt-4
+                ${isVip 
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-amber-900/50' 
+                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-indigo-900/50'
+                }`}
+            >
+              {loading ? 'Sintetizando Carnet...' : 'Generar y Unirse'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const DashboardView = () => {
+    const cardRef = useRef(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    if (!userData) return null;
+    const isVip = userData.tier === 'VIP';
+
+    const files = [
+      { id: 1, name: 'Reglamento_Gremio.pdf', type: 'pdf', premium: false, size: '2.4 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+      { id: 2, name: 'Sede_Hiperbolica.jpg', type: 'image', premium: false, size: '450 KB', url: 'https://picsum.photos/id/1015/800/600' },
+      { id: 3, name: 'Guia_Estelar.pdf', type: 'pdf', premium: false, size: '1.1 MB', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+      { id: 4, name: 'Directiva_Secreta.mp4', type: 'video', premium: true, size: '8.9 MB', url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
+      { id: 5, name: 'Mapa_Conocimiento.jpg', type: 'image', premium: true, size: '2.2 MB', url: 'https://picsum.photos/id/1042/800/600' },
+    ];
+
+    const downloadCard = async () => {
+      if (window.html2canvas && cardRef.current) {
         try {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            isFirebaseReady = true;
-        } catch (error) {
-            console.error("Error inicializando Firebase:", error);
-            showMessage("Modo sin conexión. Los datos no se guardarán permanentemente.", "error");
+          const canvas = await window.html2canvas(cardRef.current, { 
+            backgroundColor: null,
+            scale: 2 // Mayor resolución para la descarga
+          });
+          const link = document.createElement('a');
+          link.download = `carnet-${userData.dni}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } catch (err) {
+          console.error("Error descargando carnet:", err);
         }
+      }
+    };
 
-        // Autenticación requerida por Firestore
-        async function ensureAuth() {
-            if (!isFirebaseReady) return false;
-            if (auth.currentUser) return true;
+    const getFileIcon = (type) => {
+      if (type === 'pdf') return <FileText size={18} />;
+      if (type === 'image') return <ImageIcon size={18} />;
+      if (type === 'video') return <Video size={18} />;
+      return <File size={18} />;
+    };
+
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+        
+        {/* Header */}
+        <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Panel de Control</h1>
+            <p className="text-slate-400">Bienvenido de vuelta, Operario.</p>
+          </div>
+          <button onClick={logout} className="flex items-center text-sm text-slate-400 hover:text-red-400 transition-colors bg-slate-900 px-4 py-2 rounded-lg border border-slate-800">
+            <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Carnet Column */}
+          <div className="lg:col-span-5 space-y-6">
+            <h2 className="text-lg font-semibold text-slate-300 flex items-center">
+              <ShieldAlert className="w-5 h-5 mr-2" /> Tu Carnet Oficial
+            </h2>
             
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                return true;
-            } catch (error) {
-                console.error("Error de autenticación:", error);
-                return false;
-            }
-        }
+            {/* The Carnet UI (Wrapped in a ref for html2canvas) */}
+            <div ref={cardRef} className={`relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] duration-300 border
+              ${isVip ? 'border-amber-500/50' : 'border-indigo-500/50'}
+            `}>
+              {/* Background styling based on tier */}
+              <div className={`absolute inset-0 bg-gradient-to-br backdrop-blur-xl
+                ${isVip ? 'from-slate-900 via-amber-950/60 to-black' : 'from-slate-900 via-indigo-950/60 to-black'}
+              `}></div>
+              
+              {/* Decorative blobs */}
+              <div className={`absolute -top-20 -right-20 w-48 h-48 rounded-full blur-3xl opacity-30 ${isVip ? 'bg-amber-500' : 'bg-indigo-500'}`}></div>
+              <div className={`absolute -bottom-20 -left-20 w-48 h-48 rounded-full blur-3xl opacity-30 ${isVip ? 'bg-orange-500' : 'bg-purple-500'}`}></div>
 
-        // Formatear fecha para visualización (YYYY-MM-DD a DD/MM/YYYY)
-        function formatFecha(fechaStr) {
-            const [year, month, day] = fechaStr.split('-');
-            return `${day}/${month}/${year}`;
-        }
+              {/* Grid pattern */}
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
 
-        // Generar número de afiliado bonito (GH-XXXXXX)
-        function generarNumeroAfiliado() {
-            const randomNum = Math.floor(100000 + Math.random() * 900000);
-            return `GH-${randomNum}`;
-        }
+              {/* Content */}
+              <div className="relative h-full w-full p-6 flex flex-col justify-between z-10">
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center space-x-3">
+                    {/* Dynamic Logo (User Upload or Default) */}
+                    <div className={`p-1 rounded-xl shadow-lg border ${isVip ? 'bg-amber-950/50 border-amber-500/30' : 'bg-indigo-950/50 border-indigo-500/30'}`}>
+                      {userData.logoUrl ? (
+                        <img src={userData.logoUrl} alt="Logo" className="w-10 h-10 object-cover rounded-lg" />
+                      ) : (
+                        <div className={`w-10 h-10 flex items-center justify-center ${isVip ? 'text-amber-400' : 'text-indigo-400'}`}>
+                          {isVip ? <Sparkles size={24} /> : <Shield size={24} />}
+                        </div>
+                      )}
+                    </div>
+                    <div className="leading-tight drop-shadow-md">
+                      <p className="text-[0.6rem] uppercase tracking-widest text-slate-300 font-bold">Gremio</p>
+                      <h3 className={`text-lg font-black uppercase tracking-wider ${isVip ? 'text-amber-100' : 'text-indigo-100'}`}>
+                        Hiperbólico {isVip && <span className="text-amber-400 text-xs align-top">VIP</span>}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="bg-black/60 px-3 py-1.5 rounded-lg border border-white/20 shadow-inner">
+                    <p className="font-mono text-sm font-bold text-slate-100">{userData.afiliadoId}</p>
+                  </div>
+                </div>
 
-        // In-memory fallback si Firebase falla
-        const localDatabase = new Set(); 
+                {/* Body Details */}
+                <div className="mt-auto space-y-4 bg-black/20 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div>
+                    <p className="text-[0.65rem] uppercase text-slate-300 tracking-wider mb-0.5">Titular</p>
+                    <p className="font-bold text-xl leading-none text-white drop-shadow">{userData.nombre}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[0.65rem] uppercase text-slate-300 tracking-wider mb-0.5">Documento</p>
+                      <p className="font-mono text-sm text-slate-100">{userData.dni}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.65rem] uppercase text-slate-300 tracking-wider mb-0.5">Nacimiento</p>
+                      <p className="text-sm text-slate-100">{userData.nacimiento}</p>
+                    </div>
+                  </div>
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+                  <div>
+                    <p className="text-[0.6rem] uppercase text-slate-300 tracking-wider mb-0.5">Hiperfijación Registrada</p>
+                    <p className={`font-semibold text-sm truncate ${isVip ? 'text-amber-300' : 'text-indigo-300'}`}>{userData.hiperfijacion}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            const dni = document.getElementById('dni').value.trim();
-            const cumpleanos = document.getElementById('cumpleanos').value;
-            const hiperfijacion = document.getElementById('hiperfijacion').value.trim();
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-xs text-slate-400 flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" /> Carnet verificado en la matriz
+              </div>
+              <button 
+                onClick={downloadCard}
+                className={`flex items-center justify-center w-full py-3 rounded-xl font-semibold transition-all shadow-lg
+                  ${isVip ? 'bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-600/50' : 'bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-600/50'}`}
+              >
+                <Download className="w-5 h-5 mr-2" /> Guardar Carnet como Imagen
+              </button>
+            </div>
+          </div>
 
-            if (!dni || !cumpleanos || !hiperfijacion) {
-                showMessage("Por favor, completa todos los campos.");
-                return;
-            }
-
-            // UI a estado de carga
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="animate-pulse">Procesando en la matriz...</span>';
-            statusMsg.classList.add('hidden');
-
-            try {
-                let isUnique = true;
-                let nroAfiliado = generarNumeroAfiliado();
-
-                // Lógica principal: Verificar y Guardar en Firestore
-                if (isFirebaseReady) {
-                    const authSuccess = await ensureAuth();
-                    if (authSuccess) {
-                        // REGLA 1: Usamos la ruta estricta permitida para datos públicos
-                        // Usamos el DNI como ID del documento para garantizar unicidad sin queries complejos (REGLA 2)
-                        const afiliadoRef = doc(db, 'artifacts', appId, 'public', 'data', 'afiliados', dni);
-                        const afiliadoSnap = await getDoc(afiliadoRef);
-
-                        if (afiliadoSnap.exists()) {
-                            isUnique = false;
-                        } else {
-                            // Guardamos si no existe
-                            await setDoc(afiliadoRef, {
-                                dni: dni,
-                                nacimiento: cumpleanos,
-                                hiperfijacion: hiperfijacion,
-                                numeroAfiliado: nroAfiliado,
-                                timestamp: new Date().toISOString()
-                            });
-                        }
-                    } else {
-                         throw new Error("No se pudo autenticar con la base de datos.");
-                    }
-                } else {
-                    // Fallback local para asegurar que la app funcione visualmente si no hay config
-                    if(localDatabase.has(dni)) {
-                        isUnique = false;
-                    } else {
-                        localDatabase.add(dni);
-                    }
-                }
-
-                if (!isUnique) {
-                    showMessage("Denegado: Este DNI ya está registrado en el Gremio.", "error");
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Generar Carnet";
-                    return;
-                }
-
-                // Éxito - Mostrar Carnet
-                showMessage("¡Afiliación exitosa! Bienvenido al Gremio.", "success");
-                
-                // Actualizar UI del carnet
-                document.getElementById('display-nro').textContent = nroAfiliado;
-                document.getElementById('display-dni').textContent = dni;
-                document.getElementById('display-dob').textContent = formatFecha(cumpleanos);
-                document.getElementById('display-hiper').textContent = hiperfijacion;
-
-                // Animaciones de transición
-                form.classList.add('opacity-50', 'pointer-events-none');
-                carnetPlaceholder.classList.add('hidden');
-                carnetContainer.classList.remove('hidden');
-                
-                // Animación de aparición pop
-                carnetContainer.classList.add('animate-[bounce_1s_ease-in-out]');
-                
-                btnNuevo.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error procesando afiliación:", error);
-                showMessage("Hubo un error galáctico al procesar tu solicitud. Intenta de nuevo.");
-            } finally {
-                if(submitBtn.disabled && !form.classList.contains('opacity-50')) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Generar Carnet";
-                }
-            }
-        });
-
-        // Resetear para nueva afiliación
-        btnNuevo.addEventListener('click', () => {
-            form.reset();
-            form.classList.remove('opacity-50', 'pointer-events-none');
-            carnetPlaceholder.classList.remove('hidden');
-            carnetContainer.classList.add('hidden');
-            btnNuevo.classList.add('hidden');
-            statusMsg.classList.add('hidden');
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Generar Carnet";
+          {/* Files Column */}
+          <div className="lg:col-span-7 space-y-6">
+            <h2 className="text-lg font-semibold text-slate-300 flex items-center">
+              <FileText className="w-5 h-5 mr-2" /> Visualizador de Archivos
+            </h2>
             
-            // Hacer scroll hacia el formulario en pantallas pequeñas
-            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl grid grid-cols-1 md:grid-cols-2">
+              
+              {/* File List Pane */}
+              <div className="border-r border-slate-800/50 bg-slate-950/30">
+                <div className="bg-slate-800/50 p-4 border-b border-slate-800 flex justify-between items-center">
+                  <span className="text-xs font-mono text-slate-400">/directorio/archivos</span>
+                  <span className={`text-[0.65rem] px-2 py-1 rounded font-bold uppercase tracking-wider ${isVip ? 'bg-amber-900/50 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                    {isVip ? 'Acceso Total' : 'Estándar'}
+                  </span>
+                </div>
 
-    </script>
-</body>
-</html>
+                <ul className="divide-y divide-slate-800/50 h-[400px] overflow-y-auto custom-scrollbar">
+                  {files.map(file => {
+                    const isLocked = file.premium && !isVip;
+                    const isSelected = selectedFile?.id === file.id;
+                    return (
+                      <li 
+                        key={file.id} 
+                        onClick={() => !isLocked && setSelectedFile(file)}
+                        className={`p-4 flex items-center justify-between transition-colors border-l-4 
+                          ${isLocked ? 'opacity-60 bg-slate-900/20 cursor-not-allowed border-transparent' : 'hover:bg-slate-800/50 cursor-pointer'}
+                          ${isSelected ? (isVip ? 'border-amber-500 bg-amber-900/10' : 'border-indigo-500 bg-indigo-900/10') : 'border-transparent'}
+                        `}
+                      >
+                        <div className="flex items-center space-x-3 truncate">
+                          <div className={`p-2 rounded-lg flex-shrink-0 ${isLocked ? 'bg-slate-800 text-slate-500' : file.premium ? 'bg-amber-500/10 text-amber-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                            {getFileIcon(file.type)}
+                          </div>
+                          <div className="truncate">
+                            <p className={`font-medium text-sm truncate ${isLocked ? 'text-slate-500 line-through decoration-slate-700' : 'text-slate-200'}`}>
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-slate-500">{file.size}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="ml-2 flex-shrink-0">
+                          {isLocked && <Lock className="w-4 h-4 text-slate-600" />}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+
+              {/* File Preview Pane */}
+              <div className="bg-slate-900 flex flex-col h-full min-h-[400px]">
+                {selectedFile ? (
+                  <div className="flex flex-col h-full">
+                    <div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+                      <span className="text-sm font-medium text-slate-300 truncate pr-4">{selectedFile.name}</span>
+                      <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">{selectedFile.type.toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 p-4 flex items-center justify-center bg-black/40 overflow-hidden">
+                      {selectedFile.type === 'image' && (
+                        <img src={selectedFile.url} alt="Preview" className="max-w-full max-h-full object-contain rounded border border-slate-800 shadow-2xl" />
+                      )}
+                      {selectedFile.type === 'video' && (
+                        <video src={selectedFile.url} controls className="max-w-full max-h-full rounded border border-slate-800 shadow-2xl" />
+                      )}
+                      {selectedFile.type === 'pdf' && (
+                        <iframe src={selectedFile.url} title="PDF Preview" className="w-full h-full rounded border border-slate-800 shadow-2xl" />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 h-full">
+                    <FileText className="w-12 h-12 mb-4 opacity-20" />
+                    <p className="text-sm">Selecciona un archivo del directorio para visualizar su contenido en este panel.</p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 font-sans selection:bg-indigo-500/30 relative overflow-hidden flex items-center justify-center p-4">
+      {/* Global Background Effects */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/20 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="relative z-10 w-full">
+        {currentView === 'welcome' && <WelcomeView />}
+        {currentView === 'register' && <RegisterView />}
+        {currentView === 'dashboard' && <DashboardView />}
+      </main>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+      `}} />
+    </div>
+  );
+}
