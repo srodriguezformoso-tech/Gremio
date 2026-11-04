@@ -10,22 +10,10 @@
   <!-- React & React DOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel compiler para procesar JSX en el navegador -->
+  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- html2canvas para descargar el carnet como imagen -->
+  <!-- html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <style>
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 0.8; }
-    }
-    .glow-effect {
-      animation: pulseGlow 4s infinite ease-in-out;
-    }
-  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
   <div id="root"></div>
@@ -34,16 +22,14 @@
     const { useState, useEffect, useRef } = React;
 
     function App() {
-      // Estado de Base de Datos local (Simulada en LocalStorage para persistencia)
       const [users, setUsers] = useState(() => {
         const saved = localStorage.getItem('gremio_users');
         return saved ? JSON.parse(saved) : {};
       });
 
       const [currentUser, setCurrentUser] = useState(null);
-      const [tab, setTab] = useState('register'); // 'register', 'login', 'dashboard'
+      const [tab, setTab] = useState('register');
 
-      // Formularios
       const [formData, setFormData] = useState({
         nombre: '',
         dni: '',
@@ -51,47 +37,33 @@
         hiperfijacion: '',
         tipo: 'normal',
         vipCode: '',
-        password: '',
-        logoUrl: ''
-      });
-
-      const [loginData, setLoginData] = useState({
-        dni: '',
         password: ''
       });
 
+      const [loginData, setLoginData] = useState({ dni: '', password: '' });
       const [error, setError] = useState('');
+      const [success, setSuccess] = useState('');
       const [selectedFile, setSelectedFile] = useState(null);
       const carnetRef = useRef(null);
+
+      // Logos fijos según el tipo de gremio
+      const LOGO_VIP = "https://images.unsplash.com/photo-1614850715649-1d0106293bd1?auto=format&fit=crop&w=150&q=80"; // Abstracto dorado/hiperbólico
+      const LOGO_NORMAL = "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=150&q=80"; // Abstracto estándar
 
       useEffect(() => {
         localStorage.setItem('gremio_users', JSON.stringify(users));
       }, [users]);
 
-      // Archivos del visualizador según rango
       const filesList = [
         { id: 1, name: 'Reglamento General del Gremio.pdf', type: 'pdf', level: 'normal', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-        { id: 2, name: 'Escudo Oficial Alta Resolución.png', type: 'image', level: 'normal', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80' },
-        { id: 3, name: 'Manual Secreto de Hiperfijaciones VIP.pdf', type: 'pdf', level: 'vip', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-        { id: 4, name: 'Video Promocional Exclusivo.mp4', type: 'video', level: 'vip', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' }
+        { id: 2, name: 'Manual Secreto de Hiperfijaciones VIP.pdf', type: 'pdf', level: 'vip', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+        { id: 3, name: 'Video Promocional Exclusivo.mp4', type: 'video', level: 'vip', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' }
       ];
 
-      // Manejo de carga de logo personalizado en base64
-      const handleLogoChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setFormData(prev => ({ ...prev, logoUrl: reader.result }));
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-
-      // Registrar Afiliado
       const handleRegister = (e) => {
         e.preventDefault();
         setError('');
+        setSuccess('');
 
         if (users[formData.dni]) {
           setError('El DNI ya se encuentra registrado.');
@@ -115,10 +87,10 @@
         setTab('dashboard');
       };
 
-      // Iniciar Sesión
       const handleLogin = (e) => {
         e.preventDefault();
         setError('');
+        setSuccess('');
 
         const user = users[loginData.dni];
         if (!user) {
@@ -135,7 +107,35 @@
         setTab('dashboard');
       };
 
-      // Descargar Carnet como Imagen PNG
+      // Funciones para manejar archivo JSON de base de datos
+      const exportDB = () => {
+        const dataStr = JSON.stringify(users, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = "usuarios_gremio.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        setSuccess('Archivo de usuarios descargado correctamente.');
+      };
+
+      const importDB = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const importedUsers = JSON.parse(evt.target.result);
+            setUsers(importedUsers);
+            setSuccess('Base de datos cargada con éxito.');
+          } catch (err) {
+            setError('El archivo JSON no es válido.');
+          }
+        };
+        reader.readAsText(file);
+      };
+
       const handleDownloadCarnet = () => {
         if (!carnetRef.current) return;
         html2canvas(carnetRef.current, { backgroundColor: null, scale: 2 }).then(canvas => {
@@ -148,273 +148,135 @@
 
       return (
         <div className="max-w-5xl mx-auto p-4 md:p-8">
-          {/* Header */}
-          <header className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+          <header className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
               GREMIO HIPERBÓLICO
             </h1>
             <nav className="flex gap-2">
               {!currentUser ? (
                 <>
-                  <button 
-                    onClick={() => { setTab('register'); setError(''); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === 'register' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                  >
-                    Crear Carnet
-                  </button>
-                  <button 
-                    onClick={() => { setTab('login'); setError(''); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === 'login' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                  >
-                    Iniciar Sesión
-                  </button>
+                  <button onClick={() => { setTab('register'); setError(''); setSuccess(''); }} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === 'register' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Crear Carnet</button>
+                  <button onClick={() => { setTab('login'); setError(''); setSuccess(''); }} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === 'login' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Iniciar Sesión</button>
                 </>
               ) : (
-                <button 
-                  onClick={() => { setCurrentUser(null); setTab('login'); }}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-900/40 text-red-300 hover:bg-red-800/60 border border-red-700/50"
-                >
-                  Cerrar Sesión
-                </button>
+                <button onClick={() => { setCurrentUser(null); setTab('login'); }} className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-900/40 text-red-300 hover:bg-red-800/60 border border-red-700/50">Cerrar Sesión</button>
               )}
             </nav>
           </header>
 
-          {/* Error Banner */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-950/60 border border-red-500/50 text-red-200 rounded-lg text-sm text-center">
-              {error}
+          {/* Panel de Administrador para Usuarios */}
+          {!currentUser && (
+            <div className="mb-6 bg-slate-900 border border-slate-800 rounded-lg p-4 flex justify-between items-center text-sm">
+              <span className="text-slate-400">📂 Gestor de Base de Datos (Archivo JSON)</span>
+              <div className="flex gap-2">
+                <button onClick={exportDB} className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700">Exportar .json</button>
+                <label className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 cursor-pointer">
+                  Importar .json
+                  <input type="file" accept=".json" onChange={importDB} className="hidden" />
+                </label>
+              </div>
             </div>
           )}
 
-          {/* VISTA 1: REGISTRO */}
+          {error && <div className="mb-6 p-4 bg-red-950/60 border border-red-500/50 text-red-200 rounded-lg text-sm text-center">{error}</div>}
+          {success && <div className="mb-6 p-4 bg-green-950/60 border border-green-500/50 text-green-200 rounded-lg text-sm text-center">{success}</div>}
+
           {tab === 'register' && (
-            <div className="max-w-xl mx-auto bg-slate-900/80 p-6 md:p-8 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-sm">
+            <div className="max-w-xl mx-auto bg-slate-900/80 p-6 md:p-8 rounded-2xl border border-slate-800 shadow-xl">
               <h2 className="text-xl font-semibold text-purple-300 mb-6 text-center">Formulario de Afiliación</h2>
               <form onSubmit={handleRegister} className="space-y-4">
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Nombre Completo</label>
-                  <input type="text" required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
+                <div><label className="block text-xs uppercase text-slate-400 mb-1">Nombre Completo</label><input type="text" required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs uppercase text-slate-400 mb-1">DNI (Único)</label><input type="text" required value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
+                  <div><label className="block text-xs uppercase text-slate-400 mb-1">Contraseña</label><input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
                 </div>
+                <div><label className="block text-xs uppercase text-slate-400 mb-1">Cumpleaños</label><input type="date" required value={formData.cumpleanos} onChange={e => setFormData({...formData, cumpleanos: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
+                <div><label className="block text-xs uppercase text-slate-400 mb-1">Hiperfijación Principal</label><input type="text" required value={formData.hiperfijacion} onChange={e => setFormData({...formData, hiperfijacion: e.target.value})} placeholder="Ej: Astronomía, Teclados..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs uppercase font-medium text-slate-400 mb-1">DNI (Único)</label>
-                    <input type="text" required value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Fecha de Cumpleaños</label>
-                    <input type="date" required value={formData.cumpleanos} onChange={e => setFormData({...formData, cumpleanos: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Contraseña</label>
-                  <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Hiperfijación Principal</label>
-                  <input type="text" required value={formData.hiperfijacion} onChange={e => setFormData({...formData, hiperfijacion: e.target.value})} placeholder="Ej: Dinosaurios, Astronomía, Teclados..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Logo / Insignia Personalizada (Opcional)</label>
-                  <input type="file" accept="image/*" onChange={handleLogoChange} className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-purple-300 hover:file:bg-slate-700" />
-                </div>
-
                 <div>
                   <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Tipo de Carnet</label>
                   <div className="grid grid-cols-2 gap-4">
-                    <button type="button" onClick={() => setFormData({...formData, tipo: 'normal'})} className={`py-2 rounded-lg text-sm border font-medium ${formData.tipo === 'normal' ? 'bg-slate-800 border-purple-500 text-purple-300' : 'border-slate-800 text-slate-500'}`}>Standard</button>
-                    <button type="button" onClick={() => setFormData({...formData, tipo: 'vip'})} className={`py-2 rounded-lg text-sm border font-medium ${formData.tipo === 'vip' ? 'bg-amber-950/40 border-amber-500 text-amber-300' : 'border-slate-800 text-slate-500'}`}>VIP Premium</button>
+                    <button type="button" onClick={() => setFormData({...formData, tipo: 'normal'})} className={`py-2 rounded-lg text-sm border ${formData.tipo === 'normal' ? 'bg-slate-800 border-purple-500 text-purple-300' : 'border-slate-800 text-slate-500'}`}>Normal</button>
+                    <button type="button" onClick={() => setFormData({...formData, tipo: 'vip'})} className={`py-2 rounded-lg text-sm border ${formData.tipo === 'vip' ? 'bg-amber-950/40 border-amber-500 text-amber-300' : 'border-slate-800 text-slate-500'}`}>Hiperbólico VIP</button>
                   </div>
                 </div>
 
                 {formData.tipo === 'vip' && (
-                  <div>
-                    <label className="block text-xs uppercase font-medium text-amber-400 mb-1">Código de Acceso VIP</label>
-                    <input type="password" placeholder="Ingresa el código VIP (HIPERVIP)" value={formData.vipCode} onChange={e => setFormData({...formData, vipCode: e.target.value})} className="w-full bg-slate-950 border border-amber-600/50 rounded-lg px-3 py-2 text-amber-200 focus:outline-none focus:border-amber-400" />
-                  </div>
+                  <div><label className="block text-xs uppercase text-amber-400 mb-1">Código VIP (HIPERVIP)</label><input type="password" value={formData.vipCode} onChange={e => setFormData({...formData, vipCode: e.target.value})} className="w-full bg-slate-950 border border-amber-600/50 rounded-lg px-3 py-2 text-amber-200" /></div>
                 )}
-
-                <button type="submit" className="w-full mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-lg shadow-lg transition">
-                  Generar Mi Carnet
-                </button>
+                <button type="submit" className="w-full mt-4 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-lg">Generar Mi Carnet</button>
               </form>
             </div>
           )}
 
-          {/* VISTA 2: INICIO DE SESIÓN */}
           {tab === 'login' && (
-            <div className="max-w-md mx-auto bg-slate-900/80 p-6 md:p-8 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-sm">
+            <div className="max-w-md mx-auto bg-slate-900/80 p-6 md:p-8 rounded-2xl border border-slate-800 shadow-xl">
               <h2 className="text-xl font-semibold text-purple-300 mb-6 text-center">Ingreso a Afiliados</h2>
               <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">DNI</label>
-                  <input type="text" required value={loginData.dni} onChange={e => setLoginData({...loginData, dni: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase font-medium text-slate-400 mb-1">Contraseña</label>
-                  <input type="password" required value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-purple-500" />
-                </div>
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-lg transition">
-                  Ingresar
-                </button>
+                <div><label className="block text-xs uppercase text-slate-400 mb-1">DNI</label><input type="text" required value={loginData.dni} onChange={e => setLoginData({...loginData, dni: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
+                <div><label className="block text-xs uppercase text-slate-400 mb-1">Contraseña</label><input type="password" required value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100" /></div>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-lg">Ingresar</button>
               </form>
             </div>
           )}
 
-          {/* VISTA 3: PANEL DEL AFILIADO & VISOR */}
           {tab === 'dashboard' && currentUser && (
             <div className="space-y-12">
-              {/* Sección Carnet */}
               <div className="flex flex-col items-center">
-                <div 
-                  ref={carnetRef}
-                  className={`w-full max-w-md p-6 rounded-2xl shadow-2xl relative overflow-hidden border ${
-                    currentUser.tipo === 'vip' 
-                      ? 'bg-gradient-to-br from-amber-950 via-slate-900 to-amber-900 border-amber-500/60' 
-                      : 'bg-gradient-to-br from-slate-900 via-slate-800 to-purple-950 border-purple-500/40'
-                  }`}
-                >
-                  {/* Banner Membresía */}
+                <div ref={carnetRef} className={`w-full max-w-md p-6 rounded-2xl relative border ${currentUser.tipo === 'vip' ? 'bg-gradient-to-br from-amber-950 to-amber-900 border-amber-500/60' : 'bg-gradient-to-br from-slate-900 to-purple-950 border-purple-500/40'}`}>
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className={`text-[10px] font-extrabold tracking-widest px-2.5 py-1 rounded-full border uppercase ${
-                        currentUser.tipo === 'vip' 
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' 
-                          : 'bg-purple-500/10 text-purple-300 border-purple-500/40'
-                      }`}>
-                        {currentUser.tipo === 'vip' ? ' VIP Premium' : ' Carnet Afiliado'}
+                      <span className={`text-[10px] font-extrabold tracking-widest px-2.5 py-1 rounded-full border uppercase ${currentUser.tipo === 'vip' ? 'bg-amber-500/10 text-amber-300 border-amber-500/40' : 'bg-purple-500/10 text-purple-300 border-purple-500/40'}`}>
+                        {currentUser.tipo === 'vip' ? ' VIP Hiperbólico' : ' Gremio Normal'}
                       </span>
-                      <h3 className="text-xl font-black text-white mt-2">GREMIO HIPERBÓLICO</h3>
+                      <h3 className="text-xl font-black text-white mt-2">CARNET OFICIAL</h3>
                     </div>
-                    {/* Logo Personalizado / Default */}
-                    <div className="w-14 h-14 rounded-xl border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
-                      {currentUser.logoUrl ? (
-                        <img src={currentUser.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-2xl">{currentUser.tipo === 'vip' ? '👑' : '🌌'}</span>
-                      )}
+                    {/* Imagen automática según el rango */}
+                    <div className="w-16 h-16 rounded-lg border-2 border-slate-700 bg-slate-950 overflow-hidden shadow-lg">
+                      <img src={currentUser.tipo === 'vip' ? LOGO_VIP : LOGO_NORMAL} alt="Logo de Rango" className="w-full h-full object-cover" />
                     </div>
                   </div>
 
-                  {/* Datos del Afiliado */}
                   <div className="space-y-3 mb-6">
-                    <div>
-                      <p className="text-[10px] text-slate-400 uppercase">Nombre del Miembro</p>
-                      <p className="font-bold text-lg text-slate-100">{currentUser.nombre}</p>
+                    <div><p className="text-[10px] text-slate-400 uppercase">Nombre</p><p className="font-bold text-lg">{currentUser.nombre}</p></div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><p className="text-[10px] text-slate-400 uppercase">DNI</p><p className="font-mono text-sm">{currentUser.dni}</p></div>
+                      <div><p className="text-[10px] text-slate-400 uppercase">N° Afiliado</p><p className="font-mono text-sm text-cyan-400">{currentUser.numAfiliado}</p></div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase">DNI</p>
-                        <p className="font-mono text-sm text-slate-200">{currentUser.dni}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase">N° Afiliado</p>
-                        <p className="font-mono text-sm font-bold text-cyan-400">{currentUser.numAfiliado}</p>
-                      </div>
+                      <div><p className="text-[10px] text-slate-400 uppercase">Cumpleaños</p><p className="text-xs">{currentUser.cumpleanos}</p></div>
+                      <div><p className="text-[10px] text-slate-400 uppercase">Hiperfijación</p><p className="text-xs font-semibold text-purple-300">{currentUser.hiperfijacion}</p></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase">Cumpleaños</p>
-                        <p className="text-xs text-slate-300">{currentUser.cumpleanos}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase">Hiperfijación</p>
-                        <p className="text-xs font-semibold text-purple-300">{currentUser.hiperfijacion}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[10px] text-slate-500">
-                    <span>Estado: Activo</span>
-                    <span>Emisión: {currentUser.fechaRegistro}</span>
                   </div>
                 </div>
 
-                {/* Botón Descarga Carnet */}
-                <button 
-                  onClick={handleDownloadCarnet}
-                  className="mt-4 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium text-slate-200 flex items-center gap-2 transition"
-                >
+                <button onClick={handleDownloadCarnet} className="mt-4 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-2">
                   📥 Descargar Carnet (PNG)
                 </button>
               </div>
 
-              {/* Visualizador de Archivos */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-100">Visor de Archivos del Gremio</h3>
-                    <p className="text-xs text-slate-400">Archivos disponibles según tu nivel de membresía</p>
-                  </div>
-                  <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                    Nivel: <strong className="uppercase">{currentUser.tipo}</strong>
-                  </span>
-                </div>
-
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">Visor de Archivos - Nivel: <span className="uppercase text-purple-400">{currentUser.tipo}</span></h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Lista de archivos */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 uppercase mb-3">Documentos disponibles</p>
                     {filesList.map(file => {
                       const hasAccess = file.level === 'normal' || currentUser.tipo === 'vip';
                       return (
-                        <button
-                          key={file.id}
-                          disabled={!hasAccess}
-                          onClick={() => setSelectedFile(file)}
-                          className={`w-full text-left p-3 rounded-lg text-xs font-medium border transition flex justify-between items-center ${
-                            !hasAccess 
-                              ? 'opacity-40 bg-slate-950 border-slate-900 cursor-not-allowed' 
-                              : selectedFile?.id === file.id 
-                                ? 'bg-purple-950/40 border-purple-500 text-purple-200' 
-                                : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
-                          }`}
-                        >
+                        <button key={file.id} disabled={!hasAccess} onClick={() => setSelectedFile(file)} className={`w-full text-left p-3 rounded border text-xs flex justify-between ${!hasAccess ? 'opacity-40 bg-slate-950 cursor-not-allowed' : 'bg-slate-950 hover:bg-slate-800 border-slate-700'}`}>
                           <span className="truncate">{file.name}</span>
                           {!hasAccess && <span>🔒 VIP</span>}
                         </button>
                       );
                     })}
                   </div>
-
-                  {/* Reproductor / Visualizador de Contenido */}
-                  <div className="md:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="md:col-span-2 bg-slate-950 border border-slate-800 rounded-lg p-4 flex justify-center items-center min-h-[300px]">
                     {selectedFile ? (
-                      <div className="w-full h-full flex flex-col items-center">
-                        <p className="text-xs text-slate-400 mb-4 font-mono">{selectedFile.name}</p>
-
-                        {selectedFile.type === 'image' && (
-                          <img src={selectedFile.url} alt="Archivo visualizado" className="max-h-64 object-contain rounded-lg border border-slate-800" />
-                        )}
-
-                        {selectedFile.type === 'video' && (
-                          <video controls className="w-full max-h-64 rounded-lg border border-slate-800">
-                            <source src={selectedFile.url} type="video/mp4" />
-                            Tu navegador no soporta el reproductor de video.
-                          </video>
-                        )}
-
-                        {selectedFile.type === 'pdf' && (
-                          <div className="w-full text-center space-y-4">
-                            <iframe src={selectedFile.url} className="w-full h-64 rounded-lg border border-slate-800"></iframe>
-                            <a 
-                              href={selectedFile.url} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="inline-block text-xs text-purple-400 hover:underline"
-                            >
-                              🔗 Abrir PDF en pestaña nueva
-                            </a>
-                          </div>
-                        )}
+                      <div className="w-full text-center">
+                        <p className="text-xs mb-2 text-slate-400">{selectedFile.name}</p>
+                        {selectedFile.type === 'video' && <video controls className="w-full rounded"><source src={selectedFile.url} type="video/mp4" /></video>}
+                        {selectedFile.type === 'pdf' && <iframe src={selectedFile.url} className="w-full h-64 rounded bg-white"></iframe>}
                       </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 text-center">Selecciona un archivo de la lista para previsualizarlo aquí.</p>
-                    )}
+                    ) : <p className="text-xs text-slate-500">Selecciona un archivo</p>}
                   </div>
                 </div>
               </div>
@@ -423,7 +285,6 @@
         </div>
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
